@@ -69,7 +69,7 @@ def MainPage():
         # 主界面
         navigation_bar_info(session_state)
     tab1, tab2, tab3, tab4, tab5, tab6 = navigation_bar()
-    
+
 
 
 if __name__ == '__main__':
