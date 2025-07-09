@@ -2,6 +2,7 @@ import sklearn.preprocessing as preprocessing
 import joblib as jl
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 
 def min_max_scaler(data):
@@ -120,10 +121,16 @@ class Scaler(object):
     def inverse_y_transform(self, y, feature_list, feature_idx):
         """
         :param y:
-        :param feature_list: 特征list 或 特征数
+        :param feature_list: 特征list 或 特征数量
         :param feature_idx:
         :return:
         """
+        if isinstance(y, tf.Tensor):
+            if len(y.shape) > 1:
+                y = tf.reshape(y, (-1))
+        elif isinstance(y, np.ndarray):
+            if len(y.shape) > 1:
+                y = np.reshape(y, (-1))
         if isinstance(feature_list, list):
             dummy = np.zeros((len(y), len(feature_list)))
         else:

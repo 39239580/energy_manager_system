@@ -4,6 +4,7 @@ from core.data_process_utils.process_fn import Scaler
 from core.data_process_utils.process_fn import BuildSequenceFeature
 from core.data_process_utils.process_fn import sk_load, sk_save
 import pandas as pd
+import os
 
 
 class DataProcessUtils(object):  #  针对的序列数据处理工具类
@@ -73,36 +74,42 @@ class DataProcessUtils(object):  #  针对的序列数据处理工具类
                                                      step_size=self.step_size)
 
     @classmethod
-    def build_sequence_feature(cls, train_scaler, test_scaler, feature_name, target_name=None, target_index=0,
+    def build_sequence_feature(cls, train_scaler, test_scaler, feature_name=None, target_name=None, target_index=0,
                                window_size=96 * 7, step_size=96):  # 构建序列特征
         sequence_feature = BuildSequenceFeature(
             feature_name=feature_name, target_name=target_name, target_index=target_index, window_size=window_size,
             step_size=step_size)
         train_x, train_y = sequence_feature(train_scaler)
-        test_x, test_y = sequence_feature(test_scaler)
-        return train_x, train_y, test_x, test_y, sequence_feature
+        if test_scaler is not None:
+            test_x, test_y = sequence_feature(test_scaler)
+            return train_x, train_y, test_x, test_y, sequence_feature
+        else:
+            return train_x, train_y, sequence_feature
 
-    def build_sample(self, train_dataset, test_dataset):  # 构建样本
+    def build_sample(self, train_dataset, test_dataset=None):  # 构建样本
         train_scaler = self.scaler.fit_transform(train_dataset)
-        test_scaler = self.scaler.transform(test_dataset)
         train_x, train_y = self.sequence_feature(train_scaler)
-        test_x, test_y = self.sequence_feature(test_scaler)
-        return train_x, train_y, test_x, test_y
+        if test_dataset is not None:
+            test_scaler = self.scaler.transform(test_dataset)
+            test_x, test_y = self.sequence_feature(test_scaler)
+            return train_x, train_y, test_x, test_y
+        else:
+            return train_x, train_y
 
     def save_scaler(self, model_path, model_name="/sequence_feature.pkl"):  # 保存模型
-        self.scaler.save(model_path + model_name)
+        self.scaler.save(os.path.join(model_path,  model_name))
 
     def save_sequence_feature(self, model_path, model_name="/scaler.pkl"):  # 保存序列特征处理器
-        sk_save(self.sequence_feature, model_path + model_name)
+        sk_save(self.sequence_feature, os.path.join(model_path, model_name))
 
     def save_data_preprocess(self, model_path, model_name="/sequence_feature.pkl"):  # 保存数据预处理器
-        sk_save(self, model_path + model_name)
+        sk_save(self, os.path.join(model_path, model_name))
 
-    def save_all(self, model_path, scaler_name="/scaler.pkl", sequence_feature_name="/sequence_feature.pkl",
-                 data_preprocess_name="/data_preprocess.pkl"):
-        self.save_scaler(model_path, scaler_name)
-        self.save_sequence_feature(model_path, sequence_feature_name)
-        self.save_data_preprocess(model_path, data_preprocess_name)
+    def save_all(self, model_path, scaler_name="scaler.pkl", sequence_feature_name="sequence_feature.pkl",
+                 data_preprocess_name="data_preprocess.pkl"):
+        self.save_scaler(os.path.join(model_path, scaler_name))
+        self.save_sequence_feature(os.path.join(model_path, sequence_feature_name))
+        self.save_data_preprocess(os.path.join(model_path, data_preprocess_name))
 
     def __call__(self, data):
         dataset = self.selector(data)
@@ -115,8 +122,8 @@ class DataProcessUtils(object):  #  针对的序列数据处理工具类
 
 
 class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, 加载模型
-    def __init__(self, model_path, scaler_name="/scaler.pkl", sequence_feature_name="/sequence_feature.pkl",
-                 data_preprocess_name="/data_preprocess.pkl", test_ratio=0.3, validation_ratio=0.2, random_state=42,
+    def __init__(self, model_path, scaler_name="scaler.pkl", sequence_feature_name="sequence_feature.pkl",
+                 data_preprocess_name="data_preprocess.pkl", test_ratio=0.3, validation_ratio=0.2, random_state=42,
                  target_name=None, target_index=0, window_size=96 * 7, step_size=96):
         self.model_path = model_path
         self.scaler_name = scaler_name
@@ -128,6 +135,7 @@ class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, �
             self.sequence_feature = self.data_preprocess.sequence_feature
             self.selector = self.data_preprocess.selector
             self.splitter = self.data_preprocess.splitter
+            self.validation_splitter = self.data_preprocess.validation_splitter
             if test_ratio is not None:
                 self.data_preprocess.test_ratio = test_ratio
             if validation_ratio is not None:
@@ -162,7 +170,7 @@ class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, �
         return self.scaler
 
     def _load_scaler(self):  # 加载模型
-        return sk_load(self.model_path + self.scaler_name)
+        return sk_load(os.path.join(self.model_path + self.scaler_name))
 
     def load_sequence_feature(self, model_path=None, sequence_feature_name="/sequence_feature.pkl"):  # 加载序列特征处理器
         if (model_path is not None) and (sequence_feature_name is not None):
@@ -172,7 +180,7 @@ class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, �
         return self.sequence_feature
 
     def _load_sequence_feature(self):  # 加载序列特征处理器
-        return sk_load(self.model_path + self.sequence_feature_name)
+        return sk_load(os.path.join(self.model_path , self.sequence_feature_name))
 
     def load_data_preprocess(self, model_path=None, data_preprocess_name="/data_preprocess.pkl"):  # 加载数据预处理器
         if (model_path is not None) and (data_preprocess_name is not None):
@@ -182,7 +190,7 @@ class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, �
         return self.data_preprocess
 
     def _load_data_preprocess(self):  # 加载数据预处理器
-        return sk_load(self.model_path + self.data_preprocess_name)
+        return sk_load(os.path.join(self.model_path, self.data_preprocess_name))
 
     def selector(self, data):  # 特征选择
         return self.selector(data)
@@ -196,12 +204,14 @@ class DataProcessUtilsLoder(object):   # 针对的序列数据处理工具类, �
     def scaler_inverse_transform(self, data):  # 反标准化
         return self.scaler.inverse_transform(data)
 
+    def scaler_inverse_transform_y(self, data, feature_list, feature_idx):  # 反标准化
+        return self.scaler.inverse_y_transform(data, feature_list, feature_idx)
+
     def split_dataset(self, data, test_ratio=None, random_state=None):  # 划分数据集
         if test_ratio is not None:
             self.data_preprocess.test_ratio = test_ratio
         if random_state is not None:
             self.data_preprocess.random_state = random_state
-
         return self.data_preprocess.split_dataset(data)
 
     def split_validation(self, x, y, index=None, validation_ratio=None, random_state=None):  # 划分验证集

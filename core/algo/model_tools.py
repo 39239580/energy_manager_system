@@ -3,18 +3,19 @@ import tensorflow as tf
 
 
 class ModeInfer(object):  # 模型推断工具 跨平台使用, 保存重新加载的模型，不具有predict 和 evaluate 方法
-    def __init__(self, model=None, model_path=None):
+    def __init__(self, model=None, model_path=None, signature_flag="serving_default"):
         self.model = model
         self.model_path = model_path
+        self.signature_flag = signature_flag
         if self.model is None:  # 模型对象为空时，尝试加载模型
             if self.model_path is None:
                 self.model = None
                 self.infer = None
             else:
                 self.model = self._load_model()
-                self.infer = self._init_infer()  # 加载推断期器
+                self.infer = self._init_infer(self.signature_flag)  # 加载推断期器
         else:
-            self.infer = self._init_infer()
+            self.infer = self._init_infer(self.signature_flag)
 
     @classmethod
     def load_model(cls, model_path=None):
@@ -30,7 +31,7 @@ class ModeInfer(object):  # 模型推断工具 跨平台使用, 保存重新加�
     def init_infer(cls, model, signature_flag="serving_default"):  # 初始化推断器件
         return model.signatures[signature_flag]
 
-    def infer(self, input_data):  # 推断数据
+    def infer_data(self, input_data):  # 推断数据
         return self.infer(input_data)
 
     @classmethod

@@ -1,6 +1,8 @@
 from offline_utils.data_preprocess_fn import DataProcessUtils, DataProcessUtilsLoder
 from fake_data.load.load_data import LoadData
 from core.logging_utils import setup_logging
+import tensorflow as tf
+import numpy as np
 from core.data_process_utils.process_fn import sk_load
 
 logger = setup_logging("test_fake_load_data.logs")
@@ -40,7 +42,12 @@ scaler_train_dataset_ = dp.scaler_transform(train_dataset_)
 print(scaler_train_dataset_)
 print(scaler_train_dataset_.shape)
 print(dp.scaler.inverse_transform(scaler_train_dataset_))
+print(dp.scaler_inverse_transform(scaler_train_dataset_).shape)
+y = tf.random.uniform(shape=(2, 96))
+y_ = np.random.uniform(size=(96))
+print(dp.scaler_inverse_transform_y(y_, feature_list=12, feature_idx=0))
 # dp.scaler_transform(dataset_)
+
 
 
 
