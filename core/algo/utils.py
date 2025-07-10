@@ -172,6 +172,12 @@ class DNNLayer2(keras.layers.Layer):
 
 class OutputLayer(keras.layers.Layer):
     def __init__(self, units, activation="linear", name=None, **kwargs):
+        """
+        :param units:
+        :param activation: linear 与 None 都可以, 等价
+        :param name:
+        :param kwargs:
+        """
         super(OutputLayer, self).__init__(name=name, **kwargs)
         self.units = units
         self.activation = activation
@@ -248,6 +254,70 @@ class MultiBiLSTMLayer(keras.layers.Layer):
         config.update({"units": self.units, "dropout": self.dropout,
                        "recurrent_dropout": self.recurrent_dropout,
                        "last_return_sequence": self.last_return_sequence})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+
+
+class MultiBiGRULayer(keras.layers.Layer):
+    def __init__(self, units, dropout, recurrent_dropout, last_return_sequence=True, name=None, **kwargs):
+        super(MultiBiGRULayer, self).__init__(name=name, **kwargs)
+        self.units = units
+        self.dropout = dropout
+        self.recurrent_dropout = recurrent_dropout
+        self.last_return_sequence = last_return_sequence
+        self.layer = keras.Sequential()
+        for i in range(len(self.units)):
+            if i != len(self.units)-1:
+                self.layer.add(keras.layers.Bidirectional(keras.layers.GRU(
+                    units=self.units[i], dropout=self.dropout[i],
+                    recurrent_dropout=self.recurrent_dropout[i],
+                    return_sequences=True)))
+                self.layer.add(keras.layers.LayerNormalization())
+            else:
+                self.layer.add(keras.layers.Bidirectional(keras.layers.GRU(
+                    units=self.units[i], dropout=self.dropout[i],
+                    recurrent_dropout=self.recurrent_dropout[i],
+                    return_sequences=self.last_return_sequence)))
+                self.layer.add(keras.layers.LayerNormalization())
+
+    def call(self, inputs, *args, **kwargs):
+        return self.layer(inputs, *args, **kwargs)
+
+    def get_config(self):
+        config = super(MultiBiGRULayer, self).get_config()
+        config.update({"units": self.units, "dropout": self.dropout,
+                       "recurrent_dropout": self.recurrent_dropout,
+                       "last_return_sequence": self.last_return_sequence})
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+
+
+class BiGRULayer(keras.layers.Layer):
+    def __init__(self, units, dropout, recurrent_dropout, name=None, **kwargs):
+        super(BiGRULayer, self).__init__(name=name, **kwargs)
+        self.units = units
+        self.dropout = dropout
+        self.recurrent_dropout = recurrent_dropout
+        self.layer = keras.Sequential()
+        self.layer.add(keras.layers.Bidirectional(keras.layers.GRU(units=self.units, return_sequences=True,
+                                                                   dropout=self.dropout,
+                                                                   recurrent_dropout=self.recurrent_dropout)))
+        self.layer.add(keras.layers.LayerNormalization())
+        self.layer.add(keras.layers.Bidirectional(keras.layers.GRU(units=self.units, dropout=self.dropout,
+                                                                   return_sequences=self.recurrent_dropout)))
+
+    def call(self, inputs, *args, **kwargs):
+        return self.layer(inputs, *args, **kwargs)
+
+    def get_config(self):
+        config = super(BiGRULayer, self).get_config()
+        config.update({"units": self.units, "dropout": self.dropout, "recurrent_dropout": self.recurrent_dropout})
         return config
 
     @classmethod
